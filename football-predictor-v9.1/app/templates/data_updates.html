@@ -13,6 +13,9 @@
             <button class="btn btn-outline-info" onclick="forceVolatileUpdate()">
                 <i class="bi bi-lightning me-2"></i>Actualizar Datos Volátiles
             </button>
+            <button class="btn btn-outline-success" onclick="generatePredictions()">
+                <i class="bi bi-magic me-2"></i>Generar Predicciones Diarias
+            </button>
             <button class="btn btn-outline-secondary" onclick="checkResults()">
                 <i class="bi bi-check2-circle me-2"></i>Comprobar Resultados
             </button>
@@ -151,6 +154,48 @@
         </div>
     </div>
 
+    <!-- Daily Generated Predictions -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-magic me-2 text-success"></i>Predicciones Generadas Automáticamente Hoy
+                <span class="badge bg-success ms-2">base de accuracy / ROI / Brier / Log Loss</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th>Fecha/Hora</th><th>Partido</th><th>Liga</th><th>Local</th><th>Empate</th><th>Visitante</th><th>Predicción</th><th>Estado</th><th>Generada</th><th>Resultado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for m in todays_schedule %}
+                        <tr>
+                            <td class="text-muted small">{{ m.match_date }}</td>
+                            <td><strong>{{ m.home_team }}</strong> <span class="text-muted">vs</span> <strong>{{ m.away_team }}</strong></td>
+                            <td class="text-muted small">{{ m.competition }}</td>
+                            <td>{% if m.home_win_prob is not none %}{{ (m.home_win_prob * 100) | round(1) }}%{% else %}—{% endif %}</td>
+                            <td>{% if m.draw_prob is not none %}{{ (m.draw_prob * 100) | round(1) }}%{% else %}—{% endif %}</td>
+                            <td>{% if m.away_win_prob is not none %}{{ (m.away_win_prob * 100) | round(1) }}%{% else %}—{% endif %}</td>
+                            <td class="fw-600">{{ m.predicted_label or 'Pendiente' }}</td>
+                            <td>
+                                {% if m.predicted %}<span class="badge bg-success">procesado</span>{% else %}<span class="badge bg-warning text-dark">pendiente</span>{% endif %}
+                                <small class="text-muted d-block">{{ m.processing_status }}</small>
+                            </td>
+                            <td class="text-muted small">{{ m.generated_at or '—' }}</td>
+                            <td>{% if m.home_score is not none %}<span class="badge bg-dark">{{ m.home_score }}-{{ m.away_score }}</span>{% else %}<span class="text-muted">sin resultado</span>{% endif %}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="10" class="text-center text-muted py-4">No hay partidos disponibles. Ejecuta “Buscar partidos de hoy”.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- API Rate Limits -->
     <div class="col-md-5">
         <div class="card">
@@ -257,6 +302,20 @@ async function forceVolatileUpdate() {
         const r = await apiCall('/api/updates/volatile', 'POST');
         hideLoading();
         showToast('Datos volátiles actualizados', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) {
+        hideLoading();
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function generatePredictions() {
+    showLoading('Generando predicciones automáticas...');
+    try {
+        const r = await apiCall('/api/updates/generate-predictions?force=true', 'POST');
+        hideLoading();
+        const d = r.data;
+        showToast(`Generadas: ${d.generated} · Actualizadas: ${d.updated} · Saltadas: ${d.skipped}`, 'success');
         setTimeout(() => location.reload(), 1000);
     } catch(e) {
         hideLoading();

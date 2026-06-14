@@ -238,6 +238,16 @@ async def force_fetch_matches():
         raise HTTPException(500, str(e))
 
 
+@router.post("/updates/generate-predictions")
+async def generate_daily_predictions(force: bool = False):
+    try:
+        result = await data_updater.generate_daily_predictions(force=force)
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Generate daily predictions error: {e}")
+        raise HTTPException(500, str(e))
+
+
 @router.post("/updates/volatile")
 async def force_update_volatile():
     try:

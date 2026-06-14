@@ -94,7 +94,10 @@ async def lifespan(app: FastAPI):
 
     # Trigger initial data fetch (non-blocking)
     from app.services.data_updater import data_updater
-    asyncio.create_task(data_updater.fetch_todays_matches())
+    async def _initial_data_bootstrap():
+        await data_updater.fetch_todays_matches()
+        await data_updater.generate_daily_predictions()
+    asyncio.create_task(_initial_data_bootstrap())
 
     logger.info("Football Predictor V9.0 started")
     yield
