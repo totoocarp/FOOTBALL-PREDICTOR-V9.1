@@ -4,8 +4,8 @@ BUG FIX: Logs page now shows data from SystemLog table (populated via loguru sin
 """
 
 from datetime import datetime
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from loguru import logger
 from sqlalchemy import select, func
@@ -14,9 +14,10 @@ from app.database import AsyncSessionLocal
 from app.models.team import Team, TeamStats
 from app.models.match import Match, MatchPrediction, MatchResult
 from app.models.competition import Competition
-from app.models.learning import ModelWeight, ModelStatistics
+from app.models.learning import ModelWeight, ModelStatistics, LearningPrediction, WeightHistory
 from app.models.worldcup import WorldCupSimulation
 from app.models.logs import SystemLog
+from app.models.data_update import MatchSchedule
 from app.services.cache import cache
 from app.services.data_collector import data_collector
 from app.services.learning_engine import learning_engine
@@ -27,70 +28,28 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/")
 async def index(request: Request):
-    async with AsyncSessionLocal() as session:
-        total_predictions = (await session.execute(
-            select(func.count()).select_from(MatchPrediction)
-        )).scalar()
-        correct_q = await session.execute(
-            select(func.count()).select_from(MatchPrediction)
-            .where(MatchPrediction.was_correct_1x2 == True)
-        )
-        correct_predictions = correct_q.scalar()
+    """Beta entrypoint: public home is disabled; learning is the product center."""
+    return RedirectResponse(url="/learning", status_code=307)
 
-    accuracy = 0.0
-    if total_predictions and total_predictions > 0:
-        accuracy = round(correct_predictions / total_predictions * 100, 1)
 
-    sources = await data_collector.get_all_sources_status()
-    scheduler_jobs = get_scheduler_jobs()
-    update_status = await data_updater.get_all_update_status()
-
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "active_page": "home",
-        "total_predictions": total_predictions or 0,
-        "correct_predictions": correct_predictions or 0,
-        "accuracy": accuracy,
-        "sources": sources,
-        "scheduler_jobs": scheduler_jobs,
-        "update_status": update_status,
-    })
+async def _disabled_public_module(module_name: str):
+    """Keep future modules out of the beta web surface without deleting internals."""
+    raise HTTPException(
+        status_code=404,
+        detail=f"{module_name} está oculto durante la Beta. Usa Aprendizaje, Data Updates, Estadísticas o System Health.",
+    )
 
 
 @router.get("/predict", response_class=HTMLResponse)
 async def predict_page(request: Request):
-    return templates.TemplateResponse("predict.html", {
-        "request": request,
-        "active_page": "predict",
-    })
+    await _disabled_public_module("Predictor manual")
 
 
 @router.get("/worldcup", response_class=HTMLResponse)
 async def worldcup_page(request: Request):
-    from app.services.worldcup_predictor import WORLDCUP_2026_TEAMS, TEAM_ELO
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(WorldCupSimulation)
-            .order_by(WorldCupSimulation.created_at.desc())
-            .limit(1)
-        )
-        last_simulation = result.scalar_one_or_none()
-
-    groups_data = {}
-    for group, teams in WORLDCUP_2026_TEAMS.items():
-        groups_data[group] = sorted(
-            [{"name": t, "elo": TEAM_ELO.get(t, 1500), "flag": _get_flag_code(t)} for t in teams],
-            key=lambda x: x["elo"], reverse=True,
-        )
-
-    return templates.TemplateResponse("worldcup.html", {
-        "request": request,
-        "active_page": "worldcup",
-        "last_simulation": last_simulation,
-        "groups": groups_data,
-    })
+    await _disabled_public_module("Mundial 2026")
 
 
 @router.get("/ranking", response_class=HTMLResponse)
@@ -133,6 +92,25 @@ async def learning_page(request: Request):
             .limit(20)
         )
         recent_predictions = result.scalars().all()
+        pending_learning = (await session.execute(
+            select(func.count()).select_from(MatchSchedule)
+            .where(MatchSchedule.predicted == True)
+            .where(MatchSchedule.result_checked == False)
+        )).scalar()
+        learned_total = (await session.execute(
+            select(func.count()).select_from(MatchPrediction)
+            .where(MatchPrediction.was_correct_1x2.isnot(None))
+        )).scalar()
+        learned_today = (await session.execute(
+            select(func.count()).select_from(MatchPrediction)
+            .where(MatchPrediction.was_correct_1x2.isnot(None))
+            .where(func.date(MatchPrediction.created_at) == datetime.utcnow().date().isoformat())
+        )).scalar()
+        recent_changes = (await session.execute(
+            select(WeightHistory)
+            .order_by(WeightHistory.created_at.desc())
+            .limit(30)
+        )).scalars().all()
 
     return templates.TemplateResponse("learning.html", {
         "request": request,
@@ -140,22 +118,41 @@ async def learning_page(request: Request):
         "weights": weights,
         "weight_history": history,
         "recent_predictions": recent_predictions,
+        "learning_summary": {
+            "pending_learning": pending_learning or 0,
+            "learned_today": learned_today or 0,
+            "learned_total": learned_total or 0,
+            "active_variables": len(weights),
+        },
+        "recent_changes": recent_changes,
     })
 
 
 @router.get("/database", response_class=HTMLResponse)
 async def database_page(request: Request):
     async with AsyncSessionLocal() as session:
-        team_count = (await session.execute(select(func.count()).select_from(Team))).scalar()
-        comp_count = (await session.execute(select(func.count()).select_from(Competition))).scalar()
         pred_count = (await session.execute(select(func.count()).select_from(MatchPrediction))).scalar()
+        result_count = (await session.execute(select(func.count()).select_from(MatchResult))).scalar()
+        pending_count = (await session.execute(
+            select(func.count()).select_from(MatchSchedule).where(MatchSchedule.predicted == False)
+        )).scalar()
+        learned_count = (await session.execute(
+            select(func.count()).select_from(MatchPrediction).where(MatchPrediction.was_correct_1x2.isnot(None))
+        )).scalar()
+        variable_count = (await session.execute(select(func.count()).select_from(ModelWeight))).scalar()
+        latest_schedule = (await session.execute(
+            select(MatchSchedule).order_by(MatchSchedule.updated_at.desc()).limit(10)
+        )).scalars().all()
 
     return templates.TemplateResponse("database.html", {
         "request": request,
         "active_page": "database",
-        "team_count": team_count or 0,
-        "competition_count": comp_count or 0,
         "prediction_count": pred_count or 0,
+        "result_count": result_count or 0,
+        "pending_count": pending_count or 0,
+        "learned_count": learned_count or 0,
+        "variable_count": variable_count or 0,
+        "latest_schedule": latest_schedule,
         "cache_stats": cache.stats(),
     })
 
@@ -198,22 +195,40 @@ async def system_health_page(request: Request):
     jobs = get_scheduler_jobs()
 
     async with AsyncSessionLocal() as session:
-        pred_count = (await session.execute(select(func.count()).select_from(MatchPrediction))).scalar()
+        stored_matches = (await session.execute(select(func.count()).select_from(MatchSchedule))).scalar()
+        full_predictions = (await session.execute(select(func.count()).select_from(MatchPrediction))).scalar()
+        learning_predictions = (await session.execute(select(func.count()).select_from(LearningPrediction))).scalar()
+        correct_predictions = (await session.execute(
+            select(func.count()).select_from(MatchPrediction).where(MatchPrediction.was_correct_1x2 == True)
+        )).scalar()
+        evaluated_predictions = (await session.execute(
+            select(func.count()).select_from(MatchPrediction).where(MatchPrediction.was_correct_1x2.isnot(None))
+        )).scalar()
         log_count = (await session.execute(select(func.count()).select_from(SystemLog))).scalar()
         weight_count = (await session.execute(select(func.count()).select_from(ModelWeight))).scalar()
-        wc_count = (await session.execute(select(func.count()).select_from(WorldCupSimulation))).scalar()
+        last_error = (await session.execute(
+            select(SystemLog).where(SystemLog.level == "ERROR").order_by(SystemLog.created_at.desc()).limit(1)
+        )).scalar_one_or_none()
 
     from app.config import settings
+    import os
+    db_path = settings.database_url.replace("sqlite+aiosqlite:///", "")
+    db_size_mb = round(os.path.getsize(db_path) / (1024 * 1024), 2) if os.path.exists(db_path) else 0.0
+    accuracy = round((correct_predictions or 0) / evaluated_predictions * 100, 1) if evaluated_predictions else None
     return templates.TemplateResponse("system_health.html", {
         "request": request,
         "active_page": "system_health",
         "update_status": update_status,
         "scheduler_jobs": jobs,
         "db_stats": {
-            "predictions": pred_count or 0,
+            "stored_matches": stored_matches or 0,
+            "full_predictions": full_predictions or 0,
+            "learning_predictions": learning_predictions or 0,
+            "accuracy": accuracy,
             "logs": log_count or 0,
             "weights": weight_count or 0,
-            "wc_simulations": wc_count or 0,
+            "last_error": last_error.message if last_error else "Sin errores registrados",
+            "db_size_mb": db_size_mb,
         },
         "cache": cache.stats(),
         "apis": {
@@ -229,29 +244,12 @@ async def system_health_page(request: Request):
 
 @router.get("/ai", response_class=HTMLResponse)
 async def ai_page(request: Request):
-    from app.config import settings
-    return templates.TemplateResponse("ai.html", {
-        "request": request,
-        "active_page": "ai",
-        "has_ai": settings.has_ai,
-        "ai_provider": "openai" if settings.has_openai else ("anthropic" if settings.has_anthropic else None),
-    })
+    await _disabled_public_module("Panel IA")
 
 
 @router.get("/config", response_class=HTMLResponse)
 async def config_page(request: Request):
-    from app.config import settings
-    return templates.TemplateResponse("config.html", {
-        "request": request,
-        "active_page": "config",
-        "settings": {
-            "has_football_data": bool(settings.football_data_api_key),
-            "has_api_football": bool(settings.api_football_key),
-            "has_odds_api": bool(settings.odds_api_key),
-            "has_ai": settings.has_ai,
-            "database_url": settings.database_url,
-        },
-    })
+    await _disabled_public_module("Configuración")
 
 
 _FLAG_CODES = {

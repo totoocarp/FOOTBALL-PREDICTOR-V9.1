@@ -22,22 +22,14 @@
     </div>
 
     <!-- DB Stats -->
-    <div class="col-6 col-md-3"><div class="stat-card">
-        <div class="stat-value">{{ db_stats.predictions }}</div>
-        <div class="stat-label">Predicciones</div>
-    </div></div>
-    <div class="col-6 col-md-3"><div class="stat-card">
-        <div class="stat-value">{{ db_stats.logs }}</div>
-        <div class="stat-label">Logs</div>
-    </div></div>
-    <div class="col-6 col-md-3"><div class="stat-card">
-        <div class="stat-value">{{ db_stats.weights }}</div>
-        <div class="stat-label">Variables con Peso</div>
-    </div></div>
-    <div class="col-6 col-md-3"><div class="stat-card">
-        <div class="stat-value">{{ db_stats.wc_simulations }}</div>
-        <div class="stat-label">Sims. Mundial</div>
-    </div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ db_stats.stored_matches }}</div><div class="stat-label">Partidos almacenados</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ db_stats.full_predictions }}</div><div class="stat-label">Predicciones completas</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ db_stats.learning_predictions }}</div><div class="stat-label">Predicciones aprendizaje</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{% if db_stats.accuracy is not none %}{{ db_stats.accuracy }}%{% else %}—{% endif %}</div><div class="stat-label">Accuracy general</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ db_stats.weights }}</div><div class="stat-label">Variables activas</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ cache.active_entries }}</div><div class="stat-label">Cache utilizada</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ db_stats.db_size_mb }} MB</div><div class="stat-label">Espacio utilizado</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ db_stats.logs }}</div><div class="stat-label">Logs reales</div></div></div>
 
     <!-- Scheduler Jobs -->
     <div class="col-md-6">
@@ -90,8 +82,8 @@
                     <tr><td>Football-Data.org</td><td>{% if apis.football_data %}<span class="badge bg-success">✓ Configurada</span>{% else %}<span class="badge source-missing">Sin clave</span>{% endif %}</td></tr>
                     <tr><td>API-Football</td><td>{% if apis.api_football %}<span class="badge bg-success">✓ Configurada</span>{% else %}<span class="badge source-missing">Sin clave</span>{% endif %}</td></tr>
                     <tr><td>The Odds API</td><td>{% if apis.odds_api %}<span class="badge bg-success">✓ Configurada</span>{% else %}<span class="badge source-missing">Sin clave</span>{% endif %}</td></tr>
-                    <tr><td>OpenAI</td><td>{% if apis.openai %}<span class="badge bg-success">✓ Configurada</span>{% else %}<span class="badge source-missing">Sin clave (opcional)</span>{% endif %}</td></tr>
-                    <tr><td>Anthropic</td><td>{% if apis.anthropic %}<span class="badge bg-success">✓ Configurada</span>{% else %}<span class="badge source-missing">Sin clave (opcional)</span>{% endif %}</td></tr>
+                    <tr><td>OpenAI</td><td><span class="badge bg-secondary">Oculta en Beta</span></td></tr>
+                    <tr><td>Anthropic</td><td><span class="badge bg-secondary">Oculta en Beta</span></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -120,6 +112,13 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-bug me-2 text-danger"></i>Último error registrado</div>
+            <div class="card-body"><code>{{ db_stats.last_error }}</code></div>
         </div>
     </div>
 

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Float, Integer, DateTime, Boolean, JSON, Text
+from sqlalchemy import String, Float, Integer, DateTime, Boolean, JSON, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
@@ -28,6 +28,9 @@ class UpdateRecord(Base):
 class MatchSchedule(Base):
     """Today's matches to predict — with dedup via match_uid."""
     __tablename__ = "match_schedule"
+    __table_args__ = (
+        UniqueConstraint("competition", "match_date", "home_team", "away_team", name="uq_match_schedule_natural_key"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     match_uid: Mapped[str] = mapped_column(String(200), unique=True, index=True)
