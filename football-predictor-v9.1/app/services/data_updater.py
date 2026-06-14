@@ -311,6 +311,31 @@ class DataUpdater:
             logger.error(f"Volatile data update failed: {e}")
             return {"success": False, "error": str(e)}
 
+    async def update_volatile_category(self, category: str, force: bool = False) -> dict:
+        """Update one volatile category for beta operations dashboards."""
+        if category not in {"injuries", "odds", "squads"}:
+            return {"success": False, "error": f"Unsupported volatile category: {category}"}
+        if not force and not await self.should_update(category):
+            return {"skipped": True, "reason": "Not due yet", "category": category}
+
+        start = datetime.now()
+        await self.mark_update_start(category)
+        try:
+            sources_status = await data_collector.get_all_sources_status()
+            available_sources = [k for k, v in sources_status.items() if v.get("available")]
+            duration = (datetime.now() - start).total_seconds()
+            await self.mark_update_done(
+                category,
+                records_updated=len(available_sources),
+                source=", ".join(available_sources[:3]),
+                duration=duration,
+            )
+            return {"success": True, "category": category, "sources": available_sources}
+        except Exception as e:
+            await self.mark_update_done(category, error=str(e))
+            logger.error(f"{category} update failed: {e}")
+            return {"success": False, "category": category, "error": str(e)}
+
     async def get_todays_schedule(self) -> list[dict]:
         """Get today's match schedule from DB."""
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -336,7 +361,7 @@ class DataUpdater:
                 "match_date_full": m.match_date.isoformat() if m.match_date else None,
                 "predicted": m.predicted,
                 "simulation_run": m.simulation_run,
-                "status": m.status,
+                "status": self._beta_match_status(m),
                 "home_score": m.home_score,
                 "away_score": m.away_score,
                 "prediction": m.prediction_snapshot,
@@ -349,6 +374,15 @@ class DataUpdater:
             }
             for m in matches
         ]
+
+    def _beta_match_status(self, match: MatchSchedule) -> str:
+        if match.status == "FINISHED":
+            return "Aprendido" if match.result_checked else "Finalizado"
+        if match.status == "LIVE":
+            return "En juego"
+        if match.predicted:
+            return "Predicho"
+        return "Pendiente"
 
     async def get_api_rate_limits(self) -> list[dict]:
         """Return API rate limit information for display."""
@@ -458,6 +492,7 @@ class DataUpdater:
 
             await session.commit()
 
+        await self.mark_update_done("results", records_updated=updated, source="configured_match_sources")
         logger.info(f"Result check: {updated} matches checked")
         return {"matches_checked": updated, "results_found": 0}
 

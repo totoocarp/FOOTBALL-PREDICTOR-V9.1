@@ -10,8 +10,20 @@
             <button class="btn btn-outline-warning" onclick="forceUpdateAll()">
                 <i class="bi bi-arrow-clockwise me-2"></i>Forzar Actualización Completa
             </button>
-            <button class="btn btn-outline-info" onclick="forceVolatileUpdate()">
-                <i class="bi bi-lightning me-2"></i>Actualizar Datos Volátiles
+            <button class="btn btn-outline-info" onclick="forceResultsUpdate()">
+                <i class="bi bi-trophy me-2"></i>Forzar Resultados
+            </button>
+            <button class="btn btn-outline-danger" onclick="forceInjuriesUpdate()">
+                <i class="bi bi-bandaid me-2"></i>Forzar Lesiones
+            </button>
+            <button class="btn btn-outline-primary" onclick="forceOddsUpdate()">
+                <i class="bi bi-cash-coin me-2"></i>Forzar Cuotas
+            </button>
+            <button class="btn btn-outline-secondary" onclick="refreshSchedule()">
+                <i class="bi bi-calendar-event me-2"></i>Forzar Partidos
+            </button>
+            <button class="btn btn-outline-success" onclick="generatePredictions()">
+                <i class="bi bi-magic me-2"></i>Generar Predicciones Diarias
             </button>
             <button class="btn btn-outline-success" onclick="generatePredictions()">
                 <i class="bi bi-magic me-2"></i>Generar Predicciones Diarias
@@ -122,7 +134,7 @@
                             </td>
                             <td class="text-muted" style="font-size:0.78rem">{{ m.competition }}</td>
                             <td>
-                                <span class="badge {% if m.status == 'FINISHED' %}bg-success{% elif m.status == 'LIVE' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size:0.7rem">
+                                <span class="badge {% if m.status in ['Finalizado', 'Aprendido'] %}bg-success{% elif m.status == 'En juego' %}bg-danger{% elif m.status == 'Predicho' %}bg-info{% else %}bg-secondary{% endif %}" style="font-size:0.7rem">
                                     {{ m.status }}
                                 </span>
                             </td>
@@ -296,12 +308,43 @@ async function forceUpdateAll() {
     }
 }
 
-async function forceVolatileUpdate() {
-    showLoading('Actualizando datos volátiles (lesiones/cuotas/plantillas)...');
+async function forceResultsUpdate() {
+    showLoading('Actualizando resultados reales...');
     try {
-        const r = await apiCall('/api/updates/volatile', 'POST');
+        const r = await apiCall('/api/updates/results', 'POST');
         hideLoading();
-        showToast('Datos volátiles actualizados', 'success');
+        showToast(`Resultados comprobados: ${r.data.matches_checked || 0}`, 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) { hideLoading(); showToast('Error: ' + e.message, 'error'); }
+}
+
+async function forceInjuriesUpdate() {
+    showLoading('Actualizando lesiones...');
+    try {
+        await apiCall('/api/updates/injuries', 'POST');
+        hideLoading();
+        showToast('Lesiones actualizadas', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) { hideLoading(); showToast('Error: ' + e.message, 'error'); }
+}
+
+async function forceOddsUpdate() {
+    showLoading('Actualizando cuotas...');
+    try {
+        await apiCall('/api/updates/odds', 'POST');
+        hideLoading();
+        showToast('Cuotas actualizadas', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) { hideLoading(); showToast('Error: ' + e.message, 'error'); }
+}
+
+async function generatePredictions() {
+    showLoading('Generando predicciones automáticas...');
+    try {
+        const r = await apiCall('/api/updates/generate-predictions?force=true', 'POST');
+        hideLoading();
+        const d = r.data;
+        showToast(`Generadas: ${d.generated} · Actualizadas: ${d.updated} · Saltadas: ${d.skipped}`, 'success');
         setTimeout(() => location.reload(), 1000);
     } catch(e) {
         hideLoading();

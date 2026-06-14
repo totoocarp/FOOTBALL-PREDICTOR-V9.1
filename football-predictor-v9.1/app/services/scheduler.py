@@ -153,16 +153,6 @@ def setup_scheduler():
         max_instances=1,
     )
 
-    # Update World Cup data every 6 hours
-    scheduler.add_job(
-        task_update_worldcup,
-        trigger=IntervalTrigger(hours=6),
-        id="update_worldcup",
-        name="Actualizar Mundial 2026",
-        replace_existing=True,
-        max_instances=1,
-    )
-
     scheduler.start()
     logger.info("Scheduler started with 7 background tasks")
 

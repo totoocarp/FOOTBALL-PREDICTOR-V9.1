@@ -4,6 +4,11 @@
 
 {% block content %}
 <div class="row g-3">
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ learning_summary.pending_learning }}</div><div class="stat-label">Partidos pendientes de aprender</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ learning_summary.learned_today }}</div><div class="stat-label">Aprendidos hoy</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ learning_summary.learned_total }}</div><div class="stat-label">Aprendidos total</div></div></div>
+    <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value">{{ learning_summary.active_variables }}</div><div class="stat-label">Variables activas</div></div></div>
+
     <!-- Action Bar -->
     <div class="col-12">
         <div class="d-flex gap-2 flex-wrap">
@@ -87,10 +92,11 @@
                             <tr>
                                 <th>Fecha</th>
                                 <th>Variable</th>
-                                <th>Peso</th>
-                                <th>Δ Peso</th>
-                                <th>Accuracy</th>
-                                <th>Predicciones</th>
+                                <th>Peso anterior</th>
+                                <th>Peso nuevo</th>
+                                <th>Cambio</th>
+                                <th>Accuracy asociada</th>
+                                <th>Impacto</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -99,6 +105,7 @@
                             <tr>
                                 <td class="text-muted">{{ day.date }}</td>
                                 <td class="text-capitalize fw-500">{{ var_name }}</td>
+                                <td class="text-muted">{{ "%.3f"|format(stats.weight - stats.weight_delta) }}</td>
                                 <td><span class="badge {% if stats.weight >= 1.5 %}bg-success{% elif stats.weight >= 1.0 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
                                     {{ "%.3f"|format(stats.weight) }}
                                 </span></td>
@@ -106,7 +113,7 @@
                                     {% if stats.weight_delta > 0 %}+{% endif %}{{ "%.4f"|format(stats.weight_delta) }}
                                 </td>
                                 <td class="text-warning">{{ stats.accuracy_pct }}%</td>
-                                <td class="text-muted">{{ stats.predictions_count }}</td>
+                                <td>{% if stats.weight_delta > 0 %}<span class="badge bg-success">sube</span>{% elif stats.weight_delta < 0 %}<span class="badge bg-danger">baja</span>{% else %}<span class="badge bg-secondary">sin cambio</span>{% endif %}</td>
                             </tr>
                             {% endfor %}
                         {% endfor %}

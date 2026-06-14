@@ -1,37 +1,44 @@
 {% extends "base.html" %}
-{% block title %}Base de Datos — Football Predictor V9.0{% endblock %}
-{% block page_title %}Base de Datos{% endblock %}
+{% block title %}Base de Datos — Football Predictor V9.0 Beta{% endblock %}
+{% block page_title %}Base de Datos de Entrenamiento{% endblock %}
 
 {% block content %}
 <div class="row g-3">
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-value">{{ team_count }}</div>
-            <div class="stat-label">Equipos</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-value">{{ competition_count }}</div>
-            <div class="stat-label">Competiciones</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-value">{{ prediction_count }}</div>
-            <div class="stat-label">Predicciones</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-value">{{ cache_stats.active_entries }}</div>
-            <div class="stat-label">Cache Activo</div>
+    <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value">{{ prediction_count }}</div><div class="stat-label">Predicciones almacenadas</div></div></div>
+    <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value">{{ result_count }}</div><div class="stat-label">Resultados almacenados</div></div></div>
+    <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value">{{ pending_count }}</div><div class="stat-label">Partidos pendientes</div></div></div>
+    <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value">{{ learned_count }}</div><div class="stat-label">Partidos aprendidos</div></div></div>
+    <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value">{{ variable_count }}</div><div class="stat-label">Variables registradas</div></div></div>
+    <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value">{{ cache_stats.active_entries }}</div><div class="stat-label">Cache activo</div></div></div>
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clock-history me-2 text-warning"></i>Últimos registros de partidos detectados</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Actualizado</th><th>Liga</th><th>Partido</th><th>Estado</th><th>Predicho</th><th>Resultado</th></tr></thead>
+                    <tbody>
+                    {% for m in latest_schedule %}
+                    <tr>
+                        <td class="text-muted small">{{ m.updated_at }}</td>
+                        <td class="text-muted small">{{ m.competition }}</td>
+                        <td><strong>{{ m.home_team }}</strong> <span class="text-muted">vs</span> <strong>{{ m.away_team }}</strong></td>
+                        <td>{{ m.status }}</td>
+                        <td>{% if m.predicted %}<span class="badge bg-success">sí</span>{% else %}<span class="badge bg-secondary">no</span>{% endif %}</td>
+                        <td>{% if m.home_score is not none %}{{ m.home_score }}-{{ m.away_score }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No hay registros todavía.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <div class="col-md-6">
+    <div class="col-12">
         <div class="card">
-            <div class="card-header"><i class="bi bi-archive me-2 text-warning"></i>Cache</div>
+            <div class="card-header"><i class="bi bi-archive me-2 text-warning"></i>Cache de datos</div>
             <div class="card-body">
                 <table class="table table-sm mb-3">
                     <tr><td class="text-muted">Entradas totales</td><td class="fw-700">{{ cache_stats.total_entries }}</td></tr>
@@ -39,28 +46,7 @@
                     <tr><td class="text-muted">Expiradas</td><td class="text-warning fw-700">{{ cache_stats.expired_entries }}</td></tr>
                     <tr><td class="text-muted">Tamaño total</td><td class="fw-700">{{ cache_stats.total_size_kb }} KB</td></tr>
                 </table>
-                <button class="btn btn-outline-danger btn-sm" onclick="clearCache()">
-                    <i class="bi bi-trash me-1"></i>Limpiar Cache
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-folder2-open me-2 text-warning"></i>Estructura de Archivos</div>
-            <div class="card-body">
-                <div style="font-family:monospace;font-size:0.8rem;color:var(--text-muted)">
-                    <div>📁 database/</div>
-                    <div class="ms-3">📁 cache/ <span class="text-info">(APIs, TTL 24h)</span></div>
-                    <div class="ms-3">📁 predictions/</div>
-                    <div class="ms-5">📁 full_model/</div>
-                    <div class="ms-5">📁 learning/ (xg, elo, form, market)</div>
-                    <div class="ms-3">📁 results/</div>
-                    <div class="ms-3">📁 statistics/</div>
-                    <div class="ms-3">📁 worldcup/</div>
-                    <div class="mt-2">📄 predictor.db <span class="text-info">(SQLite principal)</span></div>
-                </div>
+                <button class="btn btn-outline-danger btn-sm" onclick="clearCache()"><i class="bi bi-trash me-1"></i>Limpiar Cache</button>
             </div>
         </div>
     </div>
@@ -75,9 +61,7 @@ async function clearCache() {
         const r = await apiCall('/api/cache/clear', 'POST');
         showToast(`Cache limpiada: ${r.message}`, 'success');
         setTimeout(() => location.reload(), 1000);
-    } catch(e) {
-        showToast('Error: ' + e.message, 'error');
-    }
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 </script>
 {% endblock %}
