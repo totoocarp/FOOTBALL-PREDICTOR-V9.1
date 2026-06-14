@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block title %}Mundial 2026 — Football Predictor V9.0{% endblock %}
+{% block page_title %}Predictor Mundial FIFA 2026{% endblock %}
+
+{% block content %}
+<!-- Hero Banner -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="wc-hero-card">
+            <div class="wc-hero-content">
+                <div class="wc-trophy">🏆</div>
+                <h2 class="wc-title">FIFA World Cup 2026</h2>
+                <p class="wc-subtitle">48 selecciones · 12 grupos · USA / Canadá / México</p>
+                <div class="wc-buttons">
+                    <button class="btn btn-worldcup" id="simBtn" onclick="simulateWorldCup()">
+                        <i class="bi bi-play-circle-fill me-2"></i>SIMULAR MUNDIAL (20.000 torneos)
+                    </button>
+                    <button class="btn btn-outline-warning ms-2" onclick="loadGroupData()">
+                        <i class="bi bi-diagram-3 me-2"></i>Ver Grupos
+                    </button>
+                </div>
+                {% if last_simulation %}
+                <div class="wc-champion-badge mt-3">
+                    <span class="text-muted" style="font-size:0.8rem">Última sim:</span>
+                    <strong class="ms-2">{{ last_simulation.most_likely_champion }}</strong>
+                    <span class="badge bg-warning text-dark ms-2">FAVORITO</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-3" id="wcTabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabSimulation">
+        <i class="bi bi-trophy-fill me-1"></i>Simulación
+    </button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabGroups" onclick="loadGroupData()">
+        <i class="bi bi-diagram-3-fill me-1"></i>Grupos
+    </button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabBracket">
+        <i class="bi bi-diagram-2-fill me-1"></i>Bracket
+    </button></li>
+</ul>
+
+<div class="tab-content">
+
+<!-- TAB: Simulation Results -->
+<div class="tab-pane fade show active" id="tabSimulation">
+    {% if last_simulation %}
+    <div id="resultsSection">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header"><i class="bi bi-trophy-fill text-warning me-2"></i>Campeones más probables</div>
+                    <div class="card-body p-2" id="championList"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header"><i class="bi bi-award-fill text-warning me-2"></i>Finalistas más probables</div>
+                    <div class="card-body p-2" id="finalistList"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header"><i class="bi bi-diagram-3-fill text-info me-2"></i>Semifinalistas más probables</div>
+                    <div class="card-body p-2" id="sfList"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header"><i class="bi bi-grid-3x3-gap text-info me-2"></i>Cuartos de final más probables</div>
+                    <div class="card-body p-2" id="qfList"></div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-globe me-2 text-warning"></i>Resumen de Simulación
+                        <span class="ms-2 text-muted" style="font-size:0.8rem">
+                            {{ last_simulation.simulations_count | default(20000) }} torneos · {{ last_simulation.created_at }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="stat-card">
+                                    <div class="stat-value">{{ last_simulation.most_likely_champion }}</div>
+                                    <div class="stat-label">Campeón Más Probable</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="stat-card">
+                                    <div class="stat-value" style="font-size:1.2rem">{{ last_simulation.most_likely_final }}</div>
+                                    <div class="stat-label">Final Más Probable</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-outline-warning btn-sm" onclick="getAIAnalysis()">
+                                <i class="bi bi-stars me-1"></i>Análisis IA del Mundial
+                            </button>
+                        </div>
+                        <div id="wcAiBox" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div id="resultsSection" class="text-center py-5 text-muted">
+        <i class="bi bi-globe-americas" style="font-size:4rem;opacity:0.2"></i>
+        <p class="mt-3">Pulsa el botón para simular el Mundial 2026.</p>
+        <small>Formato real: 12 grupos · Top 2 + 8 mejores 3os = 32 equipos en knockout</small>
+    </div>
+    {% endif %}
+</div>
+
+<!-- TAB: Groups -->
+<div class="tab-pane fade" id="tabGroups">
+    <div id="groupsContainer">
+        <div class="text-center py-5 text-muted">
+            <span class="spinner-border spinner-border-sm me-2"></span>Cargando grupos...
+        </div>
+    </div>
+</div>
+
+<!-- TAB: Bracket -->
+<div class="tab-pane fade" id="tabBracket">
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-diagram-2" style="font-size:3rem;opacity:0.3"></i>
+        <p class="mt-3">Simula el Mundial para ver el bracket de eliminación.</p>
+        <button class="btn btn-outline-warning mt-2" onclick="document.getElementById('simBtn').click(); document.querySelector('[data-bs-target=\'#tabSimulation\']').click()">
+            <i class="bi bi-play-circle me-1"></i>Simular primero
+        </button>
+    </div>
+</div>
+
+</div><!-- end tab-content -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const lastSimData = {% if last_simulation %}{{ {
+    "champion_probs": last_simulation.champion_probs,
+    "finalist_probs": last_simulation.finalist_probs,
+    "semifinalist_probs": last_simulation.semifinalist_probs,
+    "quarterfinalist_probs": last_simulation.quarterfinalist_probs,
+    "most_likely_champion": last_simulation.most_likely_champion,
+    "most_likely_final": last_simulation.most_likely_final
+} | tojson }}{% else %}null{% endif %};
+
+const groupsData = {{ groups | tojson }};
+
+if (lastSimData) renderAllLists(lastSimData);
+
+async function simulateWorldCup() {
+    const btn = document.getElementById('simBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Simulando 20.000 torneos...';
+    showLoading('Simulando el Mundial 2026 completo (formato real WC2026)...');
+    try {
+        const data = await apiCall('/api/worldcup/simulate', 'POST', {});
+        hideLoading();
+        if (data.success) {
+            renderAllLists(data.data);
+            const d = data.data;
+            document.getElementById('resultsSection').style.display = 'block';
+            showToast(`¡Simulación completa! Campeón: ${d.most_likely_champion} (${d.champion_probs[d.most_likely_champion]}%)`, 'success');
+        }
+    } catch(e) {
+        hideLoading();
+        showToast('Error: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-circle-fill me-2"></i>SIMULAR MUNDIAL (20.000 torneos)';
+    }
+}
+
+function renderAllLists(d) {
+    renderWCProbList(d.champion_probs, 'championList', 12, true);
+    renderWCProbList(d.finalist_probs, 'finalistList', 12, false);
+    renderWCProbList(d.semifinalist_probs, 'sfList', 12, false);
+    renderWCProbList(d.quarterfinalist_probs, 'qfList', 12, false);
+    window._wcData = d;
+}
+
+async function loadGroupData() {
+    const container = document.getElementById('groupsContainer');
+    if (container && container.dataset.loaded) return;
+    if (!groupsData || Object.keys(groupsData).length === 0) {
+        try {
+            const data = await apiCall('/api/worldcup/groups');
+            renderGroups(data.groups);
+        } catch(e) {
+            container.innerHTML = `<div class="alert alert-warning">Error cargando grupos: ${e.message}</div>`;
+        }
+    } else {
+        renderGroups(groupsData);
+    }
+    if (container) container.dataset.loaded = 'true';
+}
+
+function renderGroups(groups) {
+    const container = document.getElementById('groupsContainer');
+    if (!container) return;
+    const groupKeys = Object.keys(groups).sort();
+    let html = '<div class="row g-3">';
+    for (const groupKey of groupKeys) {
+        const teams = groups[groupKey];
+        html += `
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-header py-2">
+                    <strong class="text-warning">Grupo ${groupKey}</strong>
+                </div>
+                <div class="card-body p-2">
+                    <table class="table table-sm mb-0" style="font-size:0.85rem">
+                        <thead><tr><th>Selección</th><th class="text-end">ELO</th></tr></thead>
+                        <tbody>`;
+        for (const [i, team] of teams.entries()) {
+            const teamObj = typeof team === 'object' ? team : {name: team, elo: 1500, flag: 'un'};
+            const flagUrl = `https://flagcdn.com/20x15/${teamObj.flag || 'un'}.png`;
+            const rankBadge = i === 0 ? 'text-warning' : (i === 1 ? 'text-info' : 'text-muted');
+            html += `<tr>
+                <td>
+                    <img src="${flagUrl}" alt="${teamObj.name}" style="width:20px;height:15px;object-fit:cover;margin-right:6px;border-radius:2px" onerror="this.style.display='none'">
+                    <span class="${rankBadge}">${teamObj.name || team}</span>
+                </td>
+                <td class="text-end"><span class="badge bg-dark text-muted">${teamObj.elo || 1500}</span></td>
+            </tr>`;
+        }
+        html += `</tbody></table></div></div></div>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+async function getAIAnalysis() {
+    if (!window._wcData && !lastSimData) { showToast('Primero simula el Mundial', 'warning'); return; }
+    const data = window._wcData || lastSimData;
+    document.getElementById('wcAiBox').innerHTML = '<div class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Analizando con IA...</div>';
+    try {
+        const result = await apiCall('/api/worldcup/ai-analysis', 'POST', data);
+        if (result.error) {
+            document.getElementById('wcAiBox').innerHTML = `<div class="alert alert-warning small">${result.error}</div>`;
+        } else {
+            document.getElementById('wcAiBox').innerHTML = `<div class="ai-analysis-box">${result.analysis}</div>`;
+        }
+    } catch(e) {
+        document.getElementById('wcAiBox').innerHTML = `<div class="alert alert-danger small">Error: ${e.message}</div>`;
+    }
+}
+</script>
+{% endblock %}

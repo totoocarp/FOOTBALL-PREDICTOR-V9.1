@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}Aprendizaje — Football Predictor V9.0{% endblock %}
+{% block page_title %}Motor de Aprendizaje Automático{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <!-- Action Bar -->
+    <div class="col-12">
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-warning" onclick="triggerUpdate()">
+                <i class="bi bi-arrow-clockwise me-2"></i>Actualizar Aprendizaje Ahora
+            </button>
+            <button class="btn btn-outline-info" onclick="triggerSnapshot()">
+                <i class="bi bi-camera me-2"></i>Guardar Snapshot de Pesos
+            </button>
+            <button class="btn btn-outline-secondary" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise me-2"></i>Recargar
+            </button>
+        </div>
+    </div>
+
+    <!-- Weights Table -->
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-cpu-fill me-2 text-warning"></i>Pesos Actuales por Variable</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Variable</th>
+                            <th>Peso</th>
+                            <th>Accuracy</th>
+                            <th>Predicciones</th>
+                            <th>Ajustado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for w in weights %}
+                    <tr>
+                        <td class="fw-600 text-capitalize">{{ w.variable_name }}</td>
+                        <td>
+                            <span class="badge {% if w.weight >= 1.5 %}bg-success{% elif w.weight >= 1.0 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                {{ "%.3f"|format(w.weight) }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if w.predictions_count > 0 %}
+                            <span class="text-warning">{{ w.accuracy_pct }}%</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ w.predictions_count }}</td>
+                        <td class="text-muted" style="font-size:0.75rem">{{ w.last_adjusted }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-muted text-center py-3">Cargando pesos...</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card mt-3">
+            <div class="card-header"><i class="bi bi-info-circle me-2 text-info"></i>¿Cómo funciona?</div>
+            <div class="card-body" style="font-size:0.85rem;color:var(--text-muted)">
+                <ol class="mb-0 ps-3">
+                    <li class="mb-1">El modelo predice automáticamente todos los partidos futuros</li>
+                    <li class="mb-1">Cada 2 horas comprueba si los partidos predichos han terminado</li>
+                    <li class="mb-1">Compara predicción vs resultado real para cada variable</li>
+                    <li class="mb-1">Incrementa el peso de las variables más acertadas</li>
+                    <li>Guarda un snapshot diario para el historial</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: History + Evaluated Predictions -->
+    <div class="col-md-7">
+        <!-- Learning History -->
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-clock-history me-2 text-warning"></i>Historial de Pesos (últimos 30 días)</div>
+            <div class="card-body p-0">
+                {% if weight_history %}
+                <div style="max-height:250px;overflow-y:auto">
+                    <table class="table table-sm mb-0" style="font-size:0.78rem">
+                        <thead class="sticky-top" style="background:var(--bg-card)">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Variable</th>
+                                <th>Peso</th>
+                                <th>Δ Peso</th>
+                                <th>Accuracy</th>
+                                <th>Predicciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for day in weight_history %}
+                            {% for var_name, stats in day.variables.items() %}
+                            <tr>
+                                <td class="text-muted">{{ day.date }}</td>
+                                <td class="text-capitalize fw-500">{{ var_name }}</td>
+                                <td><span class="badge {% if stats.weight >= 1.5 %}bg-success{% elif stats.weight >= 1.0 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                    {{ "%.3f"|format(stats.weight) }}
+                                </span></td>
+                                <td class="{% if stats.weight_delta > 0 %}text-success{% elif stats.weight_delta < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                    {% if stats.weight_delta > 0 %}+{% endif %}{{ "%.4f"|format(stats.weight_delta) }}
+                                </td>
+                                <td class="text-warning">{{ stats.accuracy_pct }}%</td>
+                                <td class="text-muted">{{ stats.predictions_count }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-clock-history" style="font-size:2rem;opacity:0.2"></i>
+                    <p class="mt-2 mb-0 small">El historial se genera automáticamente con cada snapshot diario.<br>
+                    Haz clic en "Guardar Snapshot de Pesos" para crear el primero.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Evaluated Predictions -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-list-check me-2 text-warning"></i>Predicciones Evaluadas Recientes</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>ID</th><th>Fecha</th><th>1X2</th><th>Marcador</th><th>BTTS</th><th>O/U</th></tr></thead>
+                    <tbody>
+                    {% for p in recent_predictions %}
+                    <tr>
+                        <td class="text-muted">{{ p.id }}</td>
+                        <td class="text-muted" style="font-size:0.75rem">{{ p.created_at | string | truncate(16, True, '') }}</td>
+                        <td>
+                            {% if p.was_correct_1x2 == True %}<span class="badge bg-success">✓</span>
+                            {% elif p.was_correct_1x2 == False %}<span class="badge bg-danger">✗</span>
+                            {% else %}<span class="badge bg-secondary">?</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if p.was_correct_score == True %}<span class="badge bg-success">✓</span>
+                            {% elif p.was_correct_score == False %}<span class="badge bg-secondary">✗</span>
+                            {% else %}<span class="badge bg-secondary">?</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if p.was_correct_btts == True %}<span class="badge bg-success">✓</span>
+                            {% elif p.was_correct_btts == False %}<span class="badge bg-secondary">✗</span>
+                            {% else %}<span class="badge bg-secondary">?</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if p.was_correct_ou25 == True %}<span class="badge bg-success">✓</span>
+                            {% elif p.was_correct_ou25 == False %}<span class="badge bg-secondary">✗</span>
+                            {% else %}<span class="badge bg-secondary">?</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-muted text-center py-3 small">Sin predicciones evaluadas todavía. El sistema evaluará automáticamente cuando los partidos terminen.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function triggerUpdate() {
+    showLoading('Ejecutando actualización del motor de aprendizaje...');
+    try {
+        const r = await apiCall('/api/learning/update', 'POST');
+        hideLoading();
+        const msg = r.data ? r.data.message : 'Actualización completada';
+        showToast(msg, 'success');
+        setTimeout(() => location.reload(), 1500);
+    } catch(e) {
+        hideLoading();
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function triggerSnapshot() {
+    try {
+        const r = await apiCall('/api/learning/snapshot', 'POST');
+        showToast('Snapshot guardado correctamente', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+</script>
+{% endblock %}

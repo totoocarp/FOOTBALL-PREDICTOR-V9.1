@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Salud del Sistema — Football Predictor V9.0{% endblock %}
+{% block page_title %}Salud del Sistema{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <!-- Status Overview -->
+    <div class="col-12">
+        <div class="alert {% if db_stats.logs > 0 %}alert-success{% else %}alert-warning{% endif %} d-flex align-items-center">
+            <i class="bi bi-heart-pulse-fill me-3 fs-4"></i>
+            <div>
+                <strong>Estado del Sistema:</strong>
+                {% set errors = update_status | selectattr('status', 'equalto', 'error') | list %}
+                {% if errors | length == 0 %}
+                <span class="text-success ms-1">✓ SALUDABLE</span>
+                {% else %}
+                <span class="text-warning ms-1">⚠ DEGRADADO — {{ errors | length }} actualizaciones con error</span>
+                {% endif %}
+                <small class="d-block text-muted">{{ now }}</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- DB Stats -->
+    <div class="col-6 col-md-3"><div class="stat-card">
+        <div class="stat-value">{{ db_stats.predictions }}</div>
+        <div class="stat-label">Predicciones</div>
+    </div></div>
+    <div class="col-6 col-md-3"><div class="stat-card">
+        <div class="stat-value">{{ db_stats.logs }}</div>
+        <div class="stat-label">Logs</div>
+    </div></div>
+    <div class="col-6 col-md-3"><div class="stat-card">
+        <div class="stat-value">{{ db_stats.weights }}</div>
+        <div class="stat-label">Variables con Peso</div>
+    </div></div>
+    <div class="col-6 col-md-3"><div class="stat-card">
+        <div class="stat-value">{{ db_stats.wc_simulations }}</div>
+        <div class="stat-label">Sims. Mundial</div>
+    </div></div>
+
+    <!-- Scheduler Jobs -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clock me-2 text-warning"></i>Tareas Programadas</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Tarea</th><th>Próxima ejecución</th></tr></thead>
+                    <tbody>
+                    {% for job in scheduler_jobs %}
+                    <tr>
+                        <td class="fw-500" style="font-size:0.85rem">{{ job.name }}</td>
+                        <td class="text-muted">{{ job.next_run }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="2" class="text-muted text-center py-3">Sin tareas activas</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cache -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-archive me-2 text-warning"></i>Cache</div>
+            <div class="card-body">
+                <table class="table table-sm mb-3">
+                    <tr><td class="text-muted">Entradas totales</td><td class="fw-700">{{ cache.total_entries }}</td></tr>
+                    <tr><td class="text-muted">Entradas activas</td><td class="text-success fw-700">{{ cache.active_entries }}</td></tr>
+                    <tr><td class="text-muted">Expiradas</td><td class="text-warning fw-700">{{ cache.expired_entries }}</td></tr>
+                    <tr><td class="text-muted">Tamaño total</td><td class="fw-700">{{ cache.total_size_kb }} KB</td></tr>
+                </table>
+                <button class="btn btn-outline-danger btn-sm" onclick="clearCache()">
+                    <i class="bi bi-trash me-1"></i>Limpiar Cache
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Status -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-key me-2 text-warning"></i>Claves de API</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>API</th><th>Estado</th></tr></thead>
+                    <tbody>
+                    <tr><td>Football-Data.org</td><td>{% if apis.football_data %}<span class="badge bg-success">✓ Configurada</span>{% else %}<span class="badge source-missing">Sin clave</span>{% endif %}</td></tr>
+                    <tr><td>API-Football</td><td>{% if apis.api_football %}<span class="badge bg-success">✓ Configurada</span>{% else %}<span class="badge source-missing">Sin clave</span>{% endif %}</td></tr>
+                    <tr><td>The Odds API</td><td>{% if apis.odds_api %}<span class="badge bg-success">✓ Configurada</span>{% else %}<span class="badge source-missing">Sin clave</span>{% endif %}</td></tr>
+                    <tr><td>OpenAI</td><td>{% if apis.openai %}<span class="badge bg-success">✓ Configurada</span>{% else %}<span class="badge source-missing">Sin clave (opcional)</span>{% endif %}</td></tr>
+                    <tr><td>Anthropic</td><td>{% if apis.anthropic %}<span class="badge bg-success">✓ Configurada</span>{% else %}<span class="badge source-missing">Sin clave (opcional)</span>{% endif %}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Updates Status -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-cloud-arrow-down me-2 text-warning"></i>Actualizaciones Recientes</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Categoría</th><th>Estado</th><th>Última</th></tr></thead>
+                    <tbody>
+                    {% for s in update_status %}
+                    <tr>
+                        <td class="text-capitalize fw-500" style="font-size:0.82rem">{{ s.category.replace('_', ' ') }}</td>
+                        <td>
+                            {% if s.status == 'ok' %}<span class="badge bg-success">OK</span>
+                            {% elif s.status == 'error' %}<span class="badge bg-danger">Error</span>
+                            {% else %}<span class="badge bg-secondary">Pendiente</span>{% endif %}
+                        </td>
+                        <td class="text-muted" style="font-size:0.78rem">{{ s.last_update }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-lightning-fill me-2 text-warning"></i>Acciones Rápidas</div>
+            <div class="card-body">
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="/data-updates" class="btn btn-outline-warning">
+                        <i class="bi bi-cloud-arrow-down me-2"></i>Gestionar Actualizaciones
+                    </a>
+                    <a href="/learning" class="btn btn-outline-info">
+                        <i class="bi bi-cpu me-2"></i>Motor de Aprendizaje
+                    </a>
+                    <a href="/logs" class="btn btn-outline-secondary">
+                        <i class="bi bi-terminal me-2"></i>Ver Logs
+                    </a>
+                    <button class="btn btn-outline-danger" onclick="clearCache()">
+                        <i class="bi bi-trash me-2"></i>Limpiar Cache
+                    </button>
+                    <button class="btn btn-outline-success" onclick="location.reload()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Recargar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function clearCache() {
+    if (!confirm('¿Limpiar toda la cache?')) return;
+    try {
+        const r = await apiCall('/api/cache/clear', 'POST');
+        showToast(`Cache limpiada: ${r.message}`, 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Estadísticas — Football Predictor V9.0{% endblock %}
+{% block page_title %}Estadísticas del Modelo{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    {% set categories = statistics | groupby('category') %}
+    {% for cat, stats in categories %}
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header text-capitalize">
+                <i class="bi bi-graph-up-arrow me-2 text-warning"></i>{{ cat }}
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Estadística</th><th>Valor</th><th>Actualizado</th></tr></thead>
+                    <tbody>
+                    {% for stat in stats %}
+                    <tr>
+                        <td>{{ stat.stat_label }}</td>
+                        <td class="fw-700 text-warning">{{ "%.2f"|format(stat.stat_value) }}</td>
+                        <td class="text-muted">{{ stat.updated_at }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="text-muted text-center py-3">No hay estadísticas aún. Las estadísticas se generan conforme el modelo predice y evalúa partidos.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-graph-up" style="font-size:3rem;opacity:0.2"></i>
+            <p class="mt-3">Las estadísticas se generarán automáticamente cuando el modelo haya predicho y evaluado partidos.</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

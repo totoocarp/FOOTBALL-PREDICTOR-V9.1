@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Ranking Variables — Football Predictor V9.0{% endblock %}
+{% block page_title %}Ranking de Variables Predictivas{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-bar-chart-fill me-2 text-warning"></i>Variables Ordenadas por Precisión</div>
+            <div class="card-body">
+                <p class="text-muted" style="font-size:0.85rem">
+                    El motor de aprendizaje ajusta automáticamente el peso de cada variable según su historial de aciertos.
+                    Variables con mayor accuracy reciben mayor peso en la predicción final.
+                </p>
+                {% if weights %}
+                <div class="row g-3">
+                    {% for w in weights %}
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-700 text-capitalize" style="font-size:1rem">{{ w.variable_name }}</span>
+                                    <span class="badge {% if w.weight >= 1.5 %}bg-success{% elif w.weight >= 1.0 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                        Peso: {{ "%.3f"|format(w.weight) }}
+                                    </span>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <small class="text-muted">Accuracy</small>
+                                        <small class="text-warning">{{ "%.1f"|format(w.accuracy * 100) }}%</small>
+                                    </div>
+                                    <div class="progress" style="height:6px;background:var(--bg-secondary)">
+                                        <div class="progress-bar bg-warning" style="width:{{ (w.accuracy * 100) | int }}%"></div>
+                                    </div>
+                                </div>
+                                <small class="text-muted">{{ w.predictions_count }} predicciones · {{ w.correct_count }} correctas</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-bar-chart" style="font-size:3rem;opacity:0.2"></i>
+                    <p class="mt-3">El ranking se genera automáticamente cuando el sistema evalúa resultados reales.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

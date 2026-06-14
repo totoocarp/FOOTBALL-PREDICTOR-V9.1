@@ -1,0 +1,319 @@
+Analiza exhaustivamente el archivo "fallosenelmodeloactual.txt" incluido dentro del proyecto.
+
+NO implementes una única solución por problema.
+
+Para cada fallo detectado debes:
+
+1. Identificar la causa exacta o las posibles causas.
+2. Enumerar TODAS las soluciones viables.
+3. Comparar ventajas y desventajas de cada solución.
+4. Determinar cuál es la más robusta para un proyecto escalable.
+5. Detectar si existen problemas relacionados que aún no fueron reportados.
+6. Proponer pruebas de validación para confirmar que el problema quedó resuelto.
+7. Implementar la solución elegida.
+8. Verificar que la implementación realmente modifica el comportamiento esperado.
+9. Agregar logs de diagnóstico cuando corresponda.
+10. Corregir tanto backend como frontend si el problema involucra ambos.
+
+IMPORTANTE:
+
+No asumir que el error está en una única función.
+
+Realizar trazabilidad completa del flujo:
+
+Frontend → API → Servicios → Base de Datos → Simulación → Renderizado → Logs.
+
+Buscar especialmente errores silenciosos donde la aplicación devuelve HTTP 200 pero no realiza ninguna acción real.
+
+────────────────────────────────────
+SECCIÓN 1 - PREDICTOR
+────────────────────────────────────
+
+Problema detectado:
+
+Las predicciones parecen prácticamente idénticas entre partidos completamente distintos.
+
+Ejemplos observados:
+
+* Brighton vs Manchester United
+* Manchester United vs Brighton
+* Manchester City vs Deportivo Riestra
+
+Todos generan resultados muy similares:
+
+* Probabilidades casi iguales
+* xG casi iguales
+* Distribuciones de marcadores casi idénticas
+* Confianza idéntica
+* Predicciones por variable muy parecidas
+
+Investigar exhaustivamente:
+
+Posibles causas:
+
+* Variables no se están cargando.
+* Variables siempre retornan valores por defecto.
+* APIs fallan y activan fallback constante.
+* Cache devuelve siempre los mismos datos.
+* Escalado incorrecto.
+* Pesos nunca se aplican.
+* Monte Carlo usa lambdas fijos.
+* Monte Carlo ignora datos reales.
+* Error en normalización.
+* Error en agregación de variables.
+* Error en cálculo de ratings.
+* Error en cálculo de xG.
+* Error en construcción de features.
+* Error en consulta de base de datos.
+* Error en lectura de equipos.
+* Error en selección de competición.
+* Error en asignación local/visitante.
+* Error en predictor por variable.
+* Error en predictor completo.
+* Error en serialización.
+* Error en frontend que muestra datos incorrectos.
+
+Validar que:
+
+Manchester City vs Deportivo Riestra produzca una predicción radicalmente distinta a:
+
+Brighton vs Manchester United.
+
+Agregar herramientas de diagnóstico que permitan visualizar:
+
+* Variables originales.
+* Variables normalizadas.
+* Pesos aplicados.
+* Rating final.
+* Lambda final.
+* Probabilidades finales.
+
+────────────────────────────────────
+SECCIÓN 2 - APRENDIZAJE AUTOMÁTICO
+────────────────────────────────────
+
+Problema detectado:
+
+El botón de actualización responde correctamente pero:
+
+* No aparecen partidos.
+* No aparecen simulaciones.
+* No aparecen registros.
+* No cambia la base de datos.
+
+Investigar:
+
+* ¿La función realmente se ejecuta?
+* ¿Se descargan partidos futuros?
+* ¿Se crean predicciones?
+* ¿Se guardan resultados?
+* ¿Existen errores ocultos?
+* ¿Se hacen commits a la base de datos?
+* ¿La interfaz está leyendo correctamente?
+
+Agregar logs detallados para cada etapa.
+
+Validar:
+
+* Descarga.
+* Predicción.
+* Guardado.
+* Lectura.
+* Visualización.
+
+────────────────────────────────────
+SECCIÓN 3 - MUNDIAL 2026
+────────────────────────────────────
+
+Problema detectado:
+
+La simulación finaliza pero devuelve:
+
+Campeón más probable: Unknown
+
+Investigar:
+
+* Equipos vacíos.
+* Grupos vacíos.
+* Fixture vacío.
+* Simulación incompleta.
+* Error de nombres.
+* Error de IDs.
+* Error de clasificación.
+* Error de persistencia.
+* Error de conteo de campeones.
+
+Agregar verificaciones previas:
+
+* Cantidad de selecciones.
+* Cantidad de grupos.
+* Cantidad de partidos.
+* Cantidad de simulaciones exitosas.
+
+La simulación nunca debe terminar con:
+
+Unknown.
+
+Si faltan datos debe mostrarse un error explícito.
+
+────────────────────────────────────
+SECCIÓN 4 - RANKING DE VARIABLES
+────────────────────────────────────
+
+Problema detectado:
+
+No aparecen variables ni pesos.
+
+Investigar:
+
+* Tabla vacía.
+* Datos nunca creados.
+* Datos nunca cargados.
+* Error en consulta.
+* Error en renderizado.
+
+Validar que se visualicen:
+
+* Variable.
+* Peso actual.
+* Confiabilidad.
+* Accuracy.
+* Evolución histórica.
+
+────────────────────────────────────
+SECCIÓN 5 - ESTADÍSTICAS
+────────────────────────────────────
+
+Problema detectado:
+
+No aparecen estadísticas.
+
+Investigar:
+
+* Datos inexistentes.
+* Consultas incorrectas.
+* Renderizado incorrecto.
+
+Implementar estados vacíos informativos.
+
+Mostrar métricas reales cuando existan.
+
+────────────────────────────────────
+SECCIÓN 6 - BASE DE DATOS
+────────────────────────────────────
+
+Problema detectado:
+
+La sección aparece vacía.
+
+Verificar:
+
+* Archivos creados.
+* Tablas creadas.
+* Registros insertados.
+* Lectura correcta.
+
+Mostrar:
+
+* Número de partidos.
+* Número de simulaciones.
+* Número de predicciones.
+* Número de resultados reales.
+* Tamaño de base de datos.
+* Última actualización.
+
+────────────────────────────────────
+SECCIÓN 7 - LOGS
+────────────────────────────────────
+
+Problema detectado:
+
+La consola tiene actividad pero la sección Logs aparece vacía.
+
+Investigar:
+
+* Logs no persistidos.
+* Logs no leídos.
+* Logs no renderizados.
+
+Implementar visor en tiempo real.
+
+────────────────────────────────────
+SECCIÓN 8 - INTERFAZ Y LEGIBILIDAD
+────────────────────────────────────
+
+Problemas detectados:
+
+* Textos difíciles de leer.
+* Contraste insuficiente.
+* Datos compactados.
+* Números poco visibles.
+
+Especial atención a:
+
+Predicciones por variable:
+
+Ejemplo:
+
+ELO
+40% L
+26% E
+33% V
+1.37 - 1.23
+
+Rediseñar visualización para que sea fácilmente interpretable.
+
+Aplicar:
+
+* Mejor contraste.
+* Mejor tipografía.
+* Espaciado consistente.
+* Responsive design.
+* Modo oscuro profesional.
+
+────────────────────────────────────
+SECCIÓN 9 - MENSAJE DE ARRANQUE
+────────────────────────────────────
+
+Modificar el mensaje de inicio.
+
+NO mostrar:
+
+Servidor iniciado en:
+http://0.0.0.0:8000
+
+Mostrar:
+
+Servidor iniciado en:
+http://localhost:8000
+
+Mantener host interno 0.0.0.0 para FastAPI.
+
+Cambiar únicamente la salida visual para el usuario.
+
+────────────────────────────────────
+REQUISITO FINAL
+────────────────────────────────────
+
+Antes de finalizar:
+
+1. Ejecutar auditoría completa del proyecto.
+2. Detectar errores adicionales no reportados.
+3. Detectar código muerto.
+4. Detectar endpoints sin uso.
+5. Detectar módulos incompletos.
+6. Detectar simulaciones que devuelvan valores constantes.
+7. Detectar variables que nunca influyen en el resultado.
+8. Detectar consultas a APIs que siempre fallen.
+9. Detectar problemas de cache.
+10. Detectar problemas de persistencia.
+
+No finalizar hasta que cada módulo tenga:
+
+* Datos reales.
+* Funcionalidad verificable.
+* Logs verificables.
+* Interfaz funcional.
+* Pruebas de validación.
+* Diagnóstico documentado.
+* Solución implementada.

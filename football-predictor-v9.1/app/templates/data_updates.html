@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% block title %}Actualizaciones de Datos — Football Predictor V9.0{% endblock %}
+{% block page_title %}Actualizaciones de Datos{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <!-- Action Bar -->
+    <div class="col-12">
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <button class="btn btn-outline-warning" onclick="forceUpdateAll()">
+                <i class="bi bi-arrow-clockwise me-2"></i>Forzar Actualización Completa
+            </button>
+            <button class="btn btn-outline-info" onclick="forceVolatileUpdate()">
+                <i class="bi bi-lightning me-2"></i>Actualizar Datos Volátiles
+            </button>
+            <button class="btn btn-outline-secondary" onclick="checkResults()">
+                <i class="bi bi-check2-circle me-2"></i>Comprobar Resultados
+            </button>
+            <small class="text-muted ms-auto"><i class="bi bi-clock me-1"></i>Última actualización página: {{ now }}</small>
+        </div>
+    </div>
+
+    <!-- Update Status Cards -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-cloud-arrow-down-fill me-2 text-warning"></i>Estado de Actualizaciones por Categoría
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Categoría</th>
+                                <th>Estado</th>
+                                <th>Última actualización</th>
+                                <th>Próxima</th>
+                                <th>Intervalo</th>
+                                <th>Registros</th>
+                                <th>Fuente</th>
+                                <th>Atrasado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for s in update_status %}
+                        <tr>
+                            <td class="fw-600 text-capitalize">{{ s.category.replace('_', ' ') }}</td>
+                            <td>
+                                {% if s.status == 'ok' %}
+                                <span class="badge bg-success"><i class="bi bi-check2"></i> OK</span>
+                                {% elif s.status == 'error' %}
+                                <span class="badge bg-danger"><i class="bi bi-x"></i> Error</span>
+                                {% elif s.status == 'running' %}
+                                <span class="badge bg-info"><span class="spinner-border spinner-border-sm"></span> Ejecutando</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Pendiente</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted" style="font-size:0.82rem">{{ s.last_update }}</td>
+                            <td class="text-muted" style="font-size:0.82rem">{{ s.next_update }}</td>
+                            <td class="text-muted">{{ s.interval_h }}h</td>
+                            <td class="text-muted">{{ s.records_updated }}</td>
+                            <td class="text-muted" style="font-size:0.78rem">{{ s.source }}</td>
+                            <td>
+                                {% if s.overdue %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Sí</span>
+                                {% else %}
+                                <span class="badge bg-success">No</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if s.error %}
+                        <tr>
+                            <td colspan="8" class="text-danger small py-1 px-3">
+                                <i class="bi bi-x-circle me-1"></i>{{ s.error }}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Match Schedule -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <i class="bi bi-calendar-event me-2 text-warning"></i>Partidos de Hoy
+                <span class="badge bg-secondary ms-2">{{ todays_schedule | length }} partidos</span>
+                <button class="btn btn-sm btn-outline-warning ms-auto" onclick="refreshSchedule()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            <div class="card-body p-0">
+                {% if todays_schedule %}
+                <div style="max-height:400px;overflow-y:auto">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Partido</th>
+                                <th>Competición</th>
+                                <th>Estado</th>
+                                <th>Pred.</th>
+                                <th>Resultado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for m in todays_schedule %}
+                        <tr>
+                            <td class="text-muted fw-600">{{ m.match_date }}</td>
+                            <td>
+                                <span class="fw-500">{{ m.home_team }}</span>
+                                <span class="text-muted mx-1">vs</span>
+                                <span class="fw-500">{{ m.away_team }}</span>
+                            </td>
+                            <td class="text-muted" style="font-size:0.78rem">{{ m.competition }}</td>
+                            <td>
+                                <span class="badge {% if m.status == 'FINISHED' %}bg-success{% elif m.status == 'LIVE' %}bg-danger{% else %}bg-secondary{% endif %}" style="font-size:0.7rem">
+                                    {{ m.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if m.predicted %}<i class="bi bi-check-circle text-success"></i>
+                                {% else %}<i class="bi bi-circle text-muted"></i>{% endif %}
+                            </td>
+                            <td class="text-muted">
+                                {% if m.home_score is not none %}{{ m.home_score }}-{{ m.away_score }}
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-calendar-x" style="font-size:2rem;opacity:0.3"></i>
+                    <p class="mt-2 mb-0 small">
+                        No hay partidos de hoy en la DB.<br>
+                        <button class="btn btn-sm btn-outline-warning mt-2" onclick="refreshSchedule()">
+                            <i class="bi bi-cloud-download me-1"></i>Buscar partidos de hoy
+                        </button>
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- API Rate Limits -->
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-speedometer2 me-2 text-warning"></i>Límites de APIs</div>
+            <div class="card-body p-0">
+                <div style="max-height:400px;overflow-y:auto">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>API</th><th>Límite/día</th><th>Clave</th></tr></thead>
+                        <tbody>
+                        {% for api in rate_limits %}
+                        <tr>
+                            <td>
+                                <div class="fw-500" style="font-size:0.82rem">{{ api.api }}</div>
+                                <small class="text-muted">{{ api.notes }}</small>
+                            </td>
+                            <td class="text-muted" style="font-size:0.82rem">
+                                {{ api.daily_limit }}
+                                {% if api.monthly_limit != api.daily_limit %}
+                                <br><small>{{ api.monthly_limit }}/mes</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not api.key_required %}
+                                <span class="badge bg-success">Gratis</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">API Key</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Logic Explanation -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-diagram-3 me-2 text-info"></i>Lógica de Actualizaciones Automáticas</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="update-timeline-card">
+                            <div class="update-timeline-icon"><i class="bi bi-play-circle-fill text-warning"></i></div>
+                            <div class="fw-600">Al Iniciar</div>
+                            <ul class="small text-muted mt-2 mb-0">
+                                <li>Buscar partidos del día</li>
+                                <li>Cargar pesos del modelo</li>
+                                <li>Inicializar scheduler</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="update-timeline-card">
+                            <div class="update-timeline-icon"><i class="bi bi-lightning-fill text-danger"></i></div>
+                            <div class="fw-600">Cada 4 Horas (Datos Volátiles)</div>
+                            <ul class="small text-muted mt-2 mb-0">
+                                <li>Lesiones y suspensiones</li>
+                                <li>Cuotas de mercado (odds)</li>
+                                <li>Convocatorias de equipos</li>
+                                <li>+15 min antes de cada partido</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="update-timeline-card">
+                            <div class="update-timeline-icon"><i class="bi bi-check2-circle text-success"></i></div>
+                            <div class="fw-600">Cada 2 Horas (Resultados)</div>
+                            <ul class="small text-muted mt-2 mb-0">
+                                <li>Comprobar partidos terminados</li>
+                                <li>Registrar resultados reales</li>
+                                <li>Activar motor de aprendizaje</li>
+                                <li>Recalcular pesos de variables</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function forceUpdateAll() {
+    showLoading('Forzando actualización completa...');
+    try {
+        await apiCall('/api/updates/fetch-matches', 'POST');
+        hideLoading();
+        showToast('Actualización completa ejecutada', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) {
+        hideLoading();
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function forceVolatileUpdate() {
+    showLoading('Actualizando datos volátiles (lesiones/cuotas/plantillas)...');
+    try {
+        const r = await apiCall('/api/updates/volatile', 'POST');
+        hideLoading();
+        showToast('Datos volátiles actualizados', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) {
+        hideLoading();
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function checkResults() {
+    showLoading('Comprobando resultados de partidos...');
+    try {
+        const r = await apiCall('/api/updates/check-results', 'POST');
+        hideLoading();
+        const d = r.data;
+        showToast(`Comprobados: ${d.matches_checked} partidos | Resultados: ${d.results_found}`, 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) {
+        hideLoading();
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function refreshSchedule() {
+    showLoading('Buscando partidos de hoy...');
+    try {
+        const r = await apiCall('/api/updates/fetch-matches', 'POST');
+        hideLoading();
+        showToast(`${r.count} partidos encontrados`, 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) {
+        hideLoading();
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+</script>
+{% endblock %}

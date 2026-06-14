@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Base de Datos — Football Predictor V9.0{% endblock %}
+{% block page_title %}Base de Datos{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">{{ team_count }}</div>
+            <div class="stat-label">Equipos</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">{{ competition_count }}</div>
+            <div class="stat-label">Competiciones</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">{{ prediction_count }}</div>
+            <div class="stat-label">Predicciones</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-value">{{ cache_stats.active_entries }}</div>
+            <div class="stat-label">Cache Activo</div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-archive me-2 text-warning"></i>Cache</div>
+            <div class="card-body">
+                <table class="table table-sm mb-3">
+                    <tr><td class="text-muted">Entradas totales</td><td class="fw-700">{{ cache_stats.total_entries }}</td></tr>
+                    <tr><td class="text-muted">Entradas activas</td><td class="text-success fw-700">{{ cache_stats.active_entries }}</td></tr>
+                    <tr><td class="text-muted">Expiradas</td><td class="text-warning fw-700">{{ cache_stats.expired_entries }}</td></tr>
+                    <tr><td class="text-muted">Tamaño total</td><td class="fw-700">{{ cache_stats.total_size_kb }} KB</td></tr>
+                </table>
+                <button class="btn btn-outline-danger btn-sm" onclick="clearCache()">
+                    <i class="bi bi-trash me-1"></i>Limpiar Cache
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-folder2-open me-2 text-warning"></i>Estructura de Archivos</div>
+            <div class="card-body">
+                <div style="font-family:monospace;font-size:0.8rem;color:var(--text-muted)">
+                    <div>📁 database/</div>
+                    <div class="ms-3">📁 cache/ <span class="text-info">(APIs, TTL 24h)</span></div>
+                    <div class="ms-3">📁 predictions/</div>
+                    <div class="ms-5">📁 full_model/</div>
+                    <div class="ms-5">📁 learning/ (xg, elo, form, market)</div>
+                    <div class="ms-3">📁 results/</div>
+                    <div class="ms-3">📁 statistics/</div>
+                    <div class="ms-3">📁 worldcup/</div>
+                    <div class="mt-2">📄 predictor.db <span class="text-info">(SQLite principal)</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function clearCache() {
+    if (!confirm('¿Limpiar toda la cache? Esto obligará a refrescar datos de las APIs.')) return;
+    try {
+        const r = await apiCall('/api/cache/clear', 'POST');
+        showToast(`Cache limpiada: ${r.message}`, 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+</script>
+{% endblock %}

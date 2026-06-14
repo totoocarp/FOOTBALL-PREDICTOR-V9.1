@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Configuración — Football Predictor V9.0{% endblock %}
+{% block page_title %}Configuración{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-gear-fill me-2 text-warning"></i>Parámetros del Sistema</div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr><td class="text-muted">Simulaciones Monte Carlo</td><td class="fw-700 text-warning">{{ monte_carlo_sims | default(20000) | int }}</td></tr>
+                    <tr><td class="text-muted">Intervalo del scheduler</td><td class="fw-700">Cada {{ scheduler_interval }} min</td></tr>
+                    <tr><td class="text-muted">Base de datos</td><td class="fw-700">{% if is_sqlite %}SQLite (local){% else %}PostgreSQL{% endif %}</td></tr>
+                    <tr><td class="text-muted">Cache TTL</td><td class="fw-700">{{ cache_ttl }} horas</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-key-fill me-2 text-warning"></i>Estado de APIs</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>API</th><th>Estado</th></tr></thead>
+                    <tbody>
+                    {% for name, info in sources.items() %}
+                    <tr>
+                        <td class="fw-600">{{ name.replace('_', ' ').title() }}</td>
+                        <td>
+                            {% if info.available %}
+                            <span class="badge source-ok"><i class="bi bi-check2 me-1"></i>Configurado</span>
+                            {% else %}
+                            <span class="badge source-missing"><i class="bi bi-x me-1"></i>Sin clave</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-header text-warning"><i class="bi bi-info-circle me-2"></i>¿Dónde poner las claves API?</div>
+            <div class="card-body">
+                <p>Crea el archivo <code>.env</code> en la raíz del proyecto (mismo directorio que <code>run.py</code>) y añade tus claves:</p>
+                <pre style="background:var(--bg-secondary);padding:1rem;border-radius:6px;font-size:0.8rem;color:var(--accent)">FOOTBALL_DATA_API_KEY=tu_clave_aqui
+API_FOOTBALL_KEY=tu_clave_aqui
+ODDS_API_KEY=tu_clave_aqui
+OPENAI_API_KEY=tu_clave_aqui   # opcional
+ANTHROPIC_API_KEY=tu_clave_aqui  # opcional</pre>
+                <p class="text-muted mb-0">
+                    <i class="bi bi-shield-check me-1 text-success"></i>
+                    El archivo <code>.env</code> está en <code>.gitignore</code> y NUNCA se sube a GitHub.
+                    Usa <code>.env.example</code> como plantilla.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

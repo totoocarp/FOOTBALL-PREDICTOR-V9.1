@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Panel IA — Football Predictor V9.0{% endblock %}
+{% block page_title %}Panel de Inteligencia Artificial{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-12">
+        {% if ai_available %}
+        <div class="alert alert-success d-flex align-items-center">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            Asistente IA configurado y disponible.
+        </div>
+        {% else %}
+        <div class="alert alert-warning d-flex align-items-center">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <div>
+                <strong>Asistente IA no configurado.</strong><br>
+                Agrega <code>OPENAI_API_KEY</code> o <code>ANTHROPIC_API_KEY</code> a tu archivo <code>.env</code>.
+                La IA es <strong>completamente opcional</strong> — el predictor funciona al 100% sin ella.
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-stars me-2 text-warning"></i>Análisis IA de Partido</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label>Equipo Local</label>
+                    <input type="text" id="aiHome" class="form-control" placeholder="Real Madrid">
+                </div>
+                <div class="mb-3">
+                    <label>Equipo Visitante</label>
+                    <input type="text" id="aiAway" class="form-control" placeholder="Manchester City">
+                </div>
+                <div class="mb-3">
+                    <label>Competición</label>
+                    <input type="text" id="aiComp" class="form-control" placeholder="Champions League">
+                </div>
+                <button class="btn btn-predict w-100" onclick="runAIPrediction()">
+                    <i class="bi bi-stars me-2"></i>Predecir + Análisis IA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-chat-left-text me-2 text-warning"></i>Resultado</div>
+            <div class="card-body" id="aiResultArea">
+                <p class="text-muted text-center py-4">El análisis aparecerá aquí...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function runAIPrediction() {
+    const home = document.getElementById('aiHome').value.trim();
+    const away = document.getElementById('aiAway').value.trim();
+    const comp = document.getElementById('aiComp').value.trim();
+    if (!home || !away) { showToast('Ingresa los equipos', 'warning'); return; }
+
+    showLoading('Prediciendo + analizando con IA...');
+    try {
+        const pred = await apiCall('/api/predict', 'POST', { home_team: home, away_team: away, competition: comp });
+        if (!pred.success) throw new Error('Error en predicción');
+        const d = pred.data;
+
+        const ai = await apiCall('/api/ai/analyze', 'POST', {
+            home_team: home, away_team: away, competition: comp, prediction: d
+        });
+        hideLoading();
+
+        const probHtml = `<div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+                <small class="text-info">${(d.home_win_prob*100).toFixed(1)}% ${home}</small>
+                <small class="text-secondary">${(d.draw_prob*100).toFixed(1)}% Empate</small>
+                <small class="text-danger">${(d.away_win_prob*100).toFixed(1)}% ${away}</small>
+            </div>
+            <div class="prob-bar-container">
+                <div class="prob-bar-home" style="width:${Math.round(d.home_win_prob*100)}%">${Math.round(d.home_win_prob*100) > 8 ? Math.round(d.home_win_prob*100)+'%' : ''}</div>
+                <div class="prob-bar-draw" style="width:${Math.round(d.draw_prob*100)}%"></div>
+                <div class="prob-bar-away" style="width:${Math.round(d.away_win_prob*100)}%"></div>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mb-3 flex-wrap">
+            <span class="badge bg-warning text-dark">Marcador: ${d.most_likely_score}</span>
+            <span class="badge bg-secondary">BTTS ${(d.btts_prob*100).toFixed(1)}%</span>
+            <span class="badge bg-secondary">O2.5 ${(d.over_25_prob*100).toFixed(1)}%</span>
+        </div>`;
+
+        if (ai.error) {
+            document.getElementById('aiResultArea').innerHTML = probHtml + `<div class="alert alert-warning">${ai.error}</div>`;
+        } else {
+            document.getElementById('aiResultArea').innerHTML = probHtml + `<div class="ai-analysis-box">${ai.analysis}</div>`;
+        }
+    } catch(e) {
+        hideLoading();
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+</script>
+{% endblock %}
