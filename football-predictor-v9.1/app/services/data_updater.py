@@ -21,6 +21,7 @@ UPDATE_INTERVALS = {
     "full_data": 24,       # hours — all variables
     "volatile_data": 4,    # hours — injuries/odds/squads/suspensions
     "worldcup": 6,         # hours — World Cup results
+    "daily_predictions": 1, # hours — automatic predictions for today's matches
     "injuries": 4,
     "odds": 4,
     "squads": 4,
@@ -35,7 +36,7 @@ def _make_match_uid(competition: str, home: str, away: str, match_date: Optional
     import re
     def normalize(s: str) -> str:
         return re.sub(r"[^a-z0-9]", "_", s.lower().strip())
-    date_str = match_date.strftime("%Y%m%d") if match_date else "unknown"
+    date_str = match_date.strftime("%Y%m%d__%H%M") if match_date else "unknown"
     return f"{normalize(competition)}__{date_str}__{normalize(home)}__{normalize(away)}"
 
 
@@ -229,6 +230,54 @@ class DataUpdater:
         logger.info(f"Today's matches: {len(results)} total, {new_count} new")
         return results
 
+    async def generate_daily_predictions(self, force: bool = False) -> dict:
+        """Generate and persist one prediction snapshot for every scheduled match today.
+
+        MatchSchedule.match_uid is built from competition + date + time + home + away,
+        so repeated scheduler/API calls update the same row instead of duplicating work.
+        """
+        from app.services.predictor import predictor
+
+        generated = 0
+        skipped = 0
+        updated = 0
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(MatchSchedule)
+                .where(MatchSchedule.status != "FINISHED")
+                .where(MatchSchedule.match_date >= today_start)
+                .where(MatchSchedule.match_date < today_end)
+                .order_by(MatchSchedule.match_date)
+            )
+            matches = result.scalars().all()
+
+            for m in matches:
+                if m.predicted and m.prediction_snapshot and not force:
+                    skipped += 1
+                    continue
+
+                pred = await predictor.predict_match(
+                    home_team=m.home_team,
+                    away_team=m.away_team,
+                    competition=m.competition,
+                )
+                pred["processing_status"] = "updated" if m.predicted else "generated"
+                pred["generated_at"] = datetime.utcnow().isoformat()
+                m.prediction_snapshot = pred
+                m.predicted = True
+                m.simulation_run = True
+                m.updated_at = datetime.utcnow()
+                generated += 1
+                if pred["processing_status"] == "updated":
+                    updated += 1
+
+            await session.commit()
+
+        await self.mark_update_done("daily_predictions", records_updated=generated, source="internal_predictor")
+        return {"generated": generated, "updated": updated, "skipped": skipped, "total_seen": generated + skipped}
+
     async def update_volatile_data(self, force: bool = False) -> dict:
         """
         Update volatile data: injuries, odds, suspensions, squads.
@@ -290,6 +339,13 @@ class DataUpdater:
                 "status": m.status,
                 "home_score": m.home_score,
                 "away_score": m.away_score,
+                "prediction": m.prediction_snapshot,
+                "generated_at": (m.prediction_snapshot or {}).get("generated_at") if m.prediction_snapshot else None,
+                "home_win_prob": (m.prediction_snapshot or {}).get("home_win_prob") if m.prediction_snapshot else None,
+                "draw_prob": (m.prediction_snapshot or {}).get("draw_prob") if m.prediction_snapshot else None,
+                "away_win_prob": (m.prediction_snapshot or {}).get("away_win_prob") if m.prediction_snapshot else None,
+                "predicted_label": (m.prediction_snapshot or {}).get("predicted_label") if m.prediction_snapshot else None,
+                "processing_status": (m.prediction_snapshot or {}).get("processing_status", "pending") if m.prediction_snapshot else "pending",
             }
             for m in matches
         ]

@@ -20,9 +20,21 @@ async def task_fetch_todays_matches():
     logger.info("Scheduler: fetching today matches...")
     try:
         matches = await data_updater.fetch_todays_matches()
-        logger.info(f"Scheduler: found {len(matches)} matches for today")
+        prediction_result = await data_updater.generate_daily_predictions()
+        logger.info(f"Scheduler: found {len(matches)} matches for today; predictions={prediction_result}")
     except Exception as e:
         logger.error(f"Scheduler fetch_todays_matches failed: {e}")
+
+
+async def task_generate_daily_predictions():
+    """Every hour: generate missing predictions for today's stored schedule."""
+    from app.services.data_updater import data_updater
+    logger.info("Scheduler: generating daily predictions...")
+    try:
+        result = await data_updater.generate_daily_predictions()
+        logger.info(f"Scheduler: daily predictions result: {result}")
+    except Exception as e:
+        logger.error(f"Scheduler daily predictions failed: {e}")
 
 
 async def task_update_volatile():
@@ -88,6 +100,17 @@ def setup_scheduler():
         misfire_grace_time=120,
     )
 
+    # Generate daily predictions every hour after fetching/upserting the schedule
+    scheduler.add_job(
+        task_generate_daily_predictions,
+        trigger=IntervalTrigger(hours=1),
+        id="generate_daily_predictions",
+        name="Generar Predicciones Diarias",
+        replace_existing=True,
+        max_instances=1,
+        misfire_grace_time=120,
+    )
+
     # Update volatile data every 4 hours
     scheduler.add_job(
         task_update_volatile,
@@ -141,7 +164,7 @@ def setup_scheduler():
     )
 
     scheduler.start()
-    logger.info("Scheduler started with 6 background tasks")
+    logger.info("Scheduler started with 7 background tasks")
 
 
 def get_scheduler_jobs() -> list[dict]:

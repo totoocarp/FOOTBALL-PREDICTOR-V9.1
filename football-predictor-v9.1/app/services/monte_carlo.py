@@ -152,6 +152,22 @@ class MonteCarloEngine:
         market_edge = team.odds_prob - 0.5
         market_contrib = market_edge * 0.12 * w["market"]
 
+        # --- Ranking component (0=best, 1=worst) ---
+        ranking_edge = (opponent.ranking_percentile - team.ranking_percentile)
+        ranking_contrib = ranking_edge * 0.18 * w["ranking"]
+
+        # --- Squad-value component (log scaled so rich clubs matter without exploding) ---
+        team_value = max(team.squad_value, 1.0)
+        opp_value = max(opponent.squad_value, 1.0)
+        value_edge = float(np.clip(np.log(team_value / opp_value), -3.0, 3.0))
+        squad_contrib = value_edge * 0.10 * w["squad_value"]
+
+        # --- Style component ---
+        shot_edge = (team.shots_on_target - opponent.shots_on_target) / 8.0
+        possession_edge = (team.possession - opponent.possession) / 100.0
+        clean_sheet_penalty = (opponent.clean_sheet_rate - 0.30)
+        style_contrib = (shot_edge * 0.12 + possession_edge * 0.05 - clean_sheet_penalty * 0.10) * w["style"]
+
         # --- Availability penalty ---
         avail_contrib = (team.availability - 1.0) * 0.12 * w["availability"]
 
@@ -168,8 +184,8 @@ class MonteCarloEngine:
         # Total adjustment (additive on base)
         adjustment = (
             elo_contrib + xg_contrib + form_contrib +
-            market_contrib + avail_contrib + fatigue_contrib +
-            home_bonus
+            market_contrib + ranking_contrib + squad_contrib + style_contrib +
+            avail_contrib + fatigue_contrib + home_bonus
         )
 
         lam = base + adjustment
