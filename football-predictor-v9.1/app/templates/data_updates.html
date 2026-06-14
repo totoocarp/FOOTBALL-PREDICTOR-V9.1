@@ -25,6 +25,9 @@
             <button class="btn btn-outline-success" onclick="generatePredictions()">
                 <i class="bi bi-magic me-2"></i>Generar Predicciones Diarias
             </button>
+            <button class="btn btn-outline-success" onclick="generatePredictions()">
+                <i class="bi bi-magic me-2"></i>Generar Predicciones Diarias
+            </button>
             <button class="btn btn-outline-secondary" onclick="checkResults()">
                 <i class="bi bi-check2-circle me-2"></i>Comprobar Resultados
             </button>
@@ -333,6 +336,20 @@ async function forceOddsUpdate() {
         showToast('Cuotas actualizadas', 'success');
         setTimeout(() => location.reload(), 1000);
     } catch(e) { hideLoading(); showToast('Error: ' + e.message, 'error'); }
+}
+
+async function generatePredictions() {
+    showLoading('Generando predicciones automáticas...');
+    try {
+        const r = await apiCall('/api/updates/generate-predictions?force=true', 'POST');
+        hideLoading();
+        const d = r.data;
+        showToast(`Generadas: ${d.generated} · Actualizadas: ${d.updated} · Saltadas: ${d.skipped}`, 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch(e) {
+        hideLoading();
+        showToast('Error: ' + e.message, 'error');
+    }
 }
 
 async function generatePredictions() {

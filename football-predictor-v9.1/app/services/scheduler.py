@@ -154,7 +154,7 @@ def setup_scheduler():
     )
 
     scheduler.start()
-    logger.info("Scheduler started with 6 beta background tasks")
+    logger.info("Scheduler started with 7 background tasks")
 
 
 def get_scheduler_jobs() -> list[dict]:

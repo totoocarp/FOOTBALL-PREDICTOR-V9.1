@@ -20,9 +20,8 @@ from app.config import settings
 UPDATE_INTERVALS = {
     "full_data": 24,       # hours — all variables
     "volatile_data": 4,    # hours — injuries/odds/squads/suspensions
+    "worldcup": 6,         # hours — World Cup results
     "daily_predictions": 1, # hours — automatic predictions for today's matches
-    "results": 2,          # hours — finished match result checks
-    "learning": 24,        # hours — learning snapshots/weight review
     "injuries": 4,
     "odds": 4,
     "squads": 4,

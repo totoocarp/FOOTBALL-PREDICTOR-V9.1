@@ -248,24 +248,6 @@ async def generate_daily_predictions(force: bool = False):
         raise HTTPException(500, str(e))
 
 
-@router.post("/updates/injuries")
-async def force_update_injuries():
-    result = await data_updater.update_volatile_category("injuries", force=True)
-    return {"success": True, "data": result}
-
-
-@router.post("/updates/odds")
-async def force_update_odds():
-    result = await data_updater.update_volatile_category("odds", force=True)
-    return {"success": True, "data": result}
-
-
-@router.post("/updates/results")
-async def force_update_results():
-    result = await data_updater.check_for_results()
-    return {"success": True, "data": result}
-
-
 @router.post("/updates/volatile")
 async def force_update_volatile():
     try:
